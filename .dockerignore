@@ -1,5 +1,6 @@
+.idea
 venv
+logs
 __pycache__
-*.pyo
-.git
-*.pyc
+.vscode
+.lprof

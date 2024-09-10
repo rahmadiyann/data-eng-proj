@@ -15,10 +15,11 @@ x-airflow-common: &airflow-common
     - ./jobs:/opt/airflow/jobs
     - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
-    - ./connections.yaml:/opt/airflow/connections.yaml
   environment:
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    - AIRFLOW__CORE__LOAD_CONNECTIONS_FROM_YAML=/opt/airflow/connections.yaml
+    - AIRFLOW__CONN_SPARK_DEFAULT=spark://spark-master:7077
+    - AIRFLOW__CONN_POSTGRES_FINANCE_DB=postgresql://postgres:rahmadiyan@finance-raw.cp22uk6owxbs.us-west-2.rds.amazonaws.com:5432/postgres
+    - AIRFLOW__CONN_POSTGRES_MOTORCYCLE_DB=postgresql://postgres:rahmadiyan@mmotorcycle.cp22uk6owxbs.us-west-2.rds.amazonaws.com:5432/postgres
   depends_on:
     - postgres
   networks:
