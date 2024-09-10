@@ -1,7 +1,8 @@
 x-spark-common: &spark-common
   image: bitnami/spark:latest
   volumes:
-    - ./jobs:/opt/bitnami/spark/jobs
+    - ./jobs:/opt/airflow/jobs
+    - ./data:/opt/airflow/data
   networks:
     - code-with-yu
 
@@ -13,8 +14,8 @@ x-airflow-common: &airflow-common
     - airflow.env
   volumes:
     - ./jobs:/opt/airflow/jobs
-    - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
+    - ./dags:/opt/airflow/dags
   environment:
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
     - AIRFLOW__CONN_SPARK_DEFAULT=spark://spark-master:7077
@@ -52,6 +53,8 @@ services:
       - POSTGRES_DB=airflow
     networks:
       - code-with-yu
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   webserver:
     <<: *airflow-common
@@ -67,3 +70,6 @@ services:
 
 networks:
   code-with-yu:
+
+volumes:
+  postgres_data:
