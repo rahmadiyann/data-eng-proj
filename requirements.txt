@@ -1,0 +1,6 @@
+apache-airflow 
+apache-airflow-providers-openlineage
+apache-airflow-providers-apache-spark 
+pyspark
+pandas
+openpyxl
