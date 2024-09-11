@@ -17,7 +17,12 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-data_file = '/opt/airflow/data/raw/motorcycle.csv'
+vars = Variable.get("nawadata", deserialize_json=True)
+proj_dir = vars["proj_dir"]
+finance_db = vars["finance_db"]
+motorcycle_db = vars["motorcycle_db"]
+
+data_file = proj_dir + '/data/raw/motorcycle.csv'
 
 dag = DAG(
     'print_variables',
@@ -42,12 +47,10 @@ def head_file():
 
 
 def print_variables_func():
-    db_variables = Variable.get("postgres", deserialize_json=True)
-    finance_db = db_variables["finance_db"]
-    motorcycle_db = db_variables["motorcycle_db"]
     print(finance_db)
     print(motorcycle_db)
-
+    print(proj_dir)
+    
 print_variables = PythonOperator(
     task_id='print_variables',
     python_callable=print_variables_func,
