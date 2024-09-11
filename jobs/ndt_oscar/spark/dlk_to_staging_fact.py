@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
     spark = SparkSession.builder \
         .appName(f'dlk_to_staging_{sys.argv[1]}_fact') \
-        .config('spark.jars', jars) \
+        .config('spark.jars.packages', 'org.postgresql:postgresql:42.3.1') \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel('ERROR')

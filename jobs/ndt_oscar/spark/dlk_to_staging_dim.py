@@ -1,8 +1,10 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import F, when, col
+from pyspark.sql import functions as F
+from pyspark.sql.functions import when, col
 import findspark
 import pandas as pd
 from datetime import datetime
+import os
 import sys
     
 def clean_df(df, data_dir):
@@ -105,13 +107,15 @@ class df_load_dim:
         
 if __name__ == '__main__':
     spark_home = '/opt/bitnami/spark'
-    jars = f'{spark_home}/jars'
     findspark.init(spark_home)
     data_dir = '/opt/airflow/data'
+    
+    os.environ['PYSPARK_PYTHON'] = sys.executable
+    os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
 
     spark = SparkSession.builder \
         .appName(f'dlk_to_staging_{sys.argv[1]}_dim') \
-        .config('spark.jars', jars) \
+        .config('spark.jars.packages', 'org.postgresql:postgresql:42.7.4') \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel('ERROR')

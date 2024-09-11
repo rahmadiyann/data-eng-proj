@@ -12,7 +12,7 @@ from airflow.operators.bash import BashOperator
 email_receiver = ["rahmadiyan.m@gmail.com", "riansshole123@gmail.com"]
 proj = Variable.get("nawadata", deserialize_json=True)
 proj_dir = proj['proj_dir']
-
+postgres_driver = '/opt/airflow/jars/PostgreSQL-42.7.0.jar'
 def print_proj_dir():
     print(proj_dir)
 
@@ -104,8 +104,10 @@ def spark_job(task_id, application, **kwargs):
     return SparkSubmitOperator(
         task_id=task_id,
         application=str(application),
-        application_args=kwargs['extra_args'],  # Remove the extra list wrapping
+        application_args=kwargs['extra_args'], 
         conn_id='spark-conn',
+        jars=postgres_driver,
+        driver_class_path=postgres_driver,
         dag=dag
     )
 

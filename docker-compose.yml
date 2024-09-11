@@ -3,6 +3,7 @@ x-spark-common: &spark-common
   volumes:
     - ./jobs:/opt/airflow/jobs
     - ./data:/opt/airflow/data
+    - ./jars:/opt/airflow/jars
   networks:
     - code-with-yu
 
@@ -16,6 +17,7 @@ x-airflow-common: &airflow-common
     - ./jobs:/opt/airflow/jobs
     - ./data:/opt/airflow/data
     - ./dags:/opt/airflow/dags
+    - ./jars:/opt/airflow/jars
   environment:
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
     - AIRFLOW__CONN_SPARK_DEFAULT=spark://spark-master:7077
@@ -44,6 +46,8 @@ services:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 1g
       SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_PYSPARK_PYTHON: /opt/bitnami/python/bin/python3
+      SPARK_PYSPARK_DRIVER_PYTHON: /opt/bitnami/python/bin/python3
 
   postgres:
     image: postgres:14.0
@@ -59,6 +63,9 @@ services:
   webserver:
     <<: *airflow-common
     command: webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor  # Ensure the executor is set
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor  # Optional: If using Celery
     ports:
       - "8080:8080"
     depends_on:

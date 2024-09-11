@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     spark = SparkSession.builder \
         .appName('stg_to_dtm_cleanup') \
-        .config('spark.jars', jars) \
+        .config('spark.jars.packages', 'org.postgresql:postgresql:42.3.1') \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel('ERROR')

@@ -4,3 +4,4 @@ apache-airflow-providers-apache-spark
 pyspark
 pandas
 openpyxl
+findspark
