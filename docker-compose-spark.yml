@@ -1,11 +1,4 @@
-x-spark-common: &spark-common
-  image: bitnami/spark:latest
-  volumes:
-    - ./jobs:/opt/airflow/jobs
-    - ./data:/opt/airflow/data
-    - ./jars:/opt/airflow/jars
-  networks:
-    - code-with-yu
+version: '3.8'
 
 x-airflow-common: &airflow-common
   build:
@@ -14,8 +7,8 @@ x-airflow-common: &airflow-common
   env_file:
     - airflow.env
   volumes:
-    - ./jobs:/opt/airflow/jobs
-    - ./data:/opt/airflow/data
+    - ./jobs:/opt/spark/apps
+    - ./data:/opt/spark/data
     - ./dags:/opt/airflow/dags
     - ./jars:/opt/airflow/jars
   environment:
@@ -26,32 +19,59 @@ x-airflow-common: &airflow-common
   depends_on:
     - postgres
   networks:
-    - code-with-yu
+    - rian-network
 
 services:
   spark-master:
-    <<: *spark-common
-    command: bin/spark-class org.apache.spark.deploy.master.Master
+    container_name: da-spark-master
+    build: .
+    image: da-spark-image
+    command: bash -c 'ls'
+    entrypoint: ['/opt/spark/entrypoint.sh', 'master']
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./data:/opt/spark/data
+      - ./jobs:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+    env_file:
+      - .env.spark
     ports:
-      - "9090:8080"
-      - "7077:7077"
+      - '9090:8080'
+      - '7077:7077'
+    networks:
+      - rian-network
 
-  spark-worker:
-    <<: *spark-common
-    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+
+  spark-history-server:
+    container_name: da-spark-history
+    image: da-spark-image
+    entrypoint: ['/opt/spark/entrypoint.sh', 'history']
     depends_on:
       - spark-master
-    environment:
-      SPARK_MODE: worker
-      SPARK_WORKER_CORES: 2
-      SPARK_WORKER_MEMORY: 1g
-      SPARK_MASTER_URL: spark://spark-master:7077
-      SPARK_PYSPARK_PYTHON: /opt/bitnami/python/bin/python3
-      SPARK_PYSPARK_DRIVER_PYTHON: /opt/bitnami/python/bin/python3
+    env_file:
+      - .env.spark
+    volumes:
+      - spark-logs:/opt/spark/spark-events
     ports:
-      - "8081:8081"
-    user: "${UID}:${GID}"
+      - '18080:18080'
 
+  spark-worker:
+    container_name: da-spark-worker
+    image: da-spark-image
+    entrypoint: ['/opt/spark/entrypoint.sh', 'worker']
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    volumes:
+      - ./data:/opt/spark/data
+      - ./jobs:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+  
   postgres:
     image: postgres:14.0
     environment:
@@ -59,7 +79,7 @@ services:
       - POSTGRES_PASSWORD=airflow
       - POSTGRES_DB=airflow
     networks:
-      - code-with-yu
+      - rian-network
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -78,8 +98,9 @@ services:
     <<: *airflow-common
     command: bash -c "airflow db migrate && airflow users create --username admin --firstname Yusuf --lastname Ganiyu --role Admin --email airscholar@gmail.com --password admin && airflow scheduler"
 
-networks:
-  code-with-yu:
-
 volumes:
+  spark-logs:
   postgres_data:
+
+networks:
+  rian-network:
