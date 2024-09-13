@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import F, when, col
+import pyspark.sql.functions as F
+from pyspark.sql.functions import when, col
 from pyspark.sql.types import IntegerType
 import findspark
 import pandas as pd
@@ -7,11 +8,11 @@ from datetime import datetime
 import sys
 
 postgres_config = {
-    'host': 'financial.c22uk6owxbs.us-west-2.rds.amazonaws.com',
-    'port': '5432',
+    'host': 'finance-raw.cp22uk6owxbs.us-west-2.rds.amazonaws.com',
+    'port': 5432,
     'database': 'postgres',
     'user': 'postgres',
-    'password': 'postgres'
+    'password': 'rahmadiyan'
 }
 
 def create_dict(df, table_name):
@@ -39,16 +40,20 @@ def create_fact(df, segment_udf, country_udf, product_udf, discount_udf):
     df = df.withColumn('profit', F.col('sales') - F.col('cogs'))
     # date to date
     df = df.withColumn('date', F.to_date(F.col('date')))
+
+    print('====FACT TABLE====')
     df.show()
+    return df
     
 def load_postgre_fact(df, table_name, postgres_config):
     df.write.jdbc(
         url=f"jdbc:postgresql://{postgres_config['host']}:{postgres_config['port']}/{postgres_config['database']}",
-        table=table_name,
+        table=f'{table_name}',
         mode='overwrite',
         properties={
             'user': postgres_config['user'],
-            'password': postgres_config['password']
+            'password': postgres_config['password'],
+            'driver': 'org.postgresql.Driver'
         }
     )
     
@@ -58,27 +63,33 @@ def write_parquet(df, data_dir, table_name):
 def clean_fact(df):
     df = df.drop('segment', 'country', 'product', 'discount_band')
     df = df.select('segment_id', 'country_id', 'product_id', 'discount_id', 'date', 'units_sold', 'manufacturing_price', 'sale_price', 'gross_sales', 'discounts', 'sales', 'cogs', 'profit')
+    return df
 
 if __name__ == '__main__':
-    spark_home = '/opt/bitnami/spark'
-    jars = f'{spark_home}/jars'
+    import os
+
+    os.environ["PYSPARK_PYTHON"] = "/usr/local/bin/python3"  # For executors
+    os.environ["PYSPARK_DRIVER_PYTHON"] = "/usr/local/bin/python3"  # For the driver
+
+    spark_home = '/opt/spark'
     findspark.init(spark_home)
-    data_dir = '/opt/airflow/data'
-    raw_data_dir = '/opt/airflow/data/raw_data'
+    data_dir = '/opt/spark/data'
+    raw_data_dir = f'{data_dir}/raw'
 
     spark = SparkSession.builder \
         .appName(f'dlk_to_staging_{sys.argv[1]}_fact') \
         .config('spark.jars.packages', 'org.postgresql:postgresql:42.3.1') \
+        .config('spark.local.dir', '/tmp/spark-temp') \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel('ERROR')
 
     # read dlk
-    segment_df = spark.read.parquet(f"{data_dir}/staging/segment_dim_staging.parquet")
-    country_df = spark.read.parquet(f"{data_dir}/staging/country_dim_staging.parquet")
-    product_df = spark.read.parquet(f"{data_dir}/staging/product_dim_staging.parquet")
-    discount_df = spark.read.parquet(f"{data_dir}/staging/discount_dim_staging.parquet")
-    raw_df = spark.read.parquet(f"{raw_data_dir}/raw_data.parquet")
+    segment_df = spark.read.parquet(f"{data_dir}/staging/segment_staging.parquet")
+    country_df = spark.read.parquet(f"{data_dir}/staging/country_staging.parquet")
+    product_df = spark.read.parquet(f"{data_dir}/staging/product_staging.parquet")
+    discount_df = spark.read.parquet(f"{data_dir}/staging/discount_staging.parquet")
+    raw_df = spark.read.parquet(f"{raw_data_dir}/raw_financial.parquet")
     # create dicts
     segment_dict = create_dict(segment_df, 'segment')
     country_dict = create_dict(country_df, 'country')
@@ -93,8 +104,8 @@ if __name__ == '__main__':
     
     #create fact
     fact_df = create_fact(raw_df, segment_udf, country_udf, product_udf, discount_udf)
-    fact_df = clean_fact(fact_df)
-    load_postgre_fact(fact_df, 'sales_fact', postgres_config)
-    write_parquet(fact_df, data_dir, 'sales_fact')
+    final_df = clean_fact(fact_df)
+    load_postgre_fact(final_df, 'sales_fact', postgres_config)
+    write_parquet(final_df, data_dir, 'sales_fact')
     
     spark.stop()

@@ -1,9 +1,2 @@
-.idea
-venv
-logs
-__pycache__
-.vscode
-.lprof
-.DS_Store
-.DS_Store
-.env
+__pycache__/
+*.pyc

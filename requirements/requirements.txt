@@ -4,3 +4,5 @@ pyarrow
 numpy
 pyspark
 openpyxl
+setuptools
+findspark

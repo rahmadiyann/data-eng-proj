@@ -11,10 +11,8 @@ from airflow.operators.bash import BashOperator
 
 email_receiver = ["rahmadiyan.m@gmail.com", "riansshole123@gmail.com"]
 proj = Variable.get("nawadata", deserialize_json=True)
-proj_dir = proj['proj_dir']
-postgres_driver = '/opt/airflow/jars/PostgreSQL-42.7.0.jar'
-def print_proj_dir():
-    print(proj_dir)
+data_dir = '/opt/spark/data'
+spark_job_dir = '/opt/spark/apps'
 
 args = {
     "owner": "Rahmadiyan M",
@@ -48,12 +46,6 @@ end = DummyOperator(
     dag=dag
 )
 
-print_proj = PythonOperator(
-    task_id="print_proj_dir",
-    python_callable=print_proj_dir,
-    dag=dag
-)
-
 def sensor(task_id, filepath):
     return FileSensor(
         task_id=task_id,
@@ -66,7 +58,7 @@ def sensor(task_id, filepath):
       
 sensor_dlk = sensor(
     task_id="sensor_dlk",
-    filepath=f'{proj_dir}/data/raw/FinancialSample.xlsx',
+    filepath=f'/opt/spark/data/raw/FinancialSample.xlsx',
 )
 
 items_list = [
@@ -104,17 +96,16 @@ def spark_job(task_id, application, **kwargs):
     return SparkSubmitOperator(
         task_id=task_id,
         application=str(application),
-        application_args=kwargs['extra_args'], 
+        application_args=[kwargs['extra_args']], 
         conn_id='spark-conn',
-        jars=postgres_driver,
-        driver_class_path=postgres_driver,
+        packages="org.postgresql:postgresql:42.3.1",
         dag=dag
     )
 
 for item in items_list:
     dlk_to_staging_dim = spark_job(
         task_id=item["task_id"],
-        application=f"{proj_dir}/jobs/ndt_oscar/spark/dlk_to_staging_dim.py",
+        application=f"{spark_job_dir}/ndt_oscar/spark/dlk_to_staging_dim.py",
         extra_args=item["table_name"]  # Pass the string directly, not as a list
     )
     
@@ -123,22 +114,24 @@ for item in items_list:
 for item in items_list_2:
     dlk_to_staging_fact = spark_job(
         task_id=item["task_id"],
-        application=f"{proj_dir}/jobs/ndt_oscar/spark/dlk_to_staging_fact.py",
+        application=f"{spark_job_dir}/ndt_oscar/spark/dlk_to_staging_fact.py",
         extra_args=item["table_name"]  # Pass the string directly, not as a list
     )
     wait >> dlk_to_staging_fact
 
 # Update the load2hist task as well
-load2hist = spark_job(
-    task_id="load2hist",
-    application=f"{proj_dir}/jobs/ndt_oscar/spark/stg_to_dtm_cleanup.py",
-    extra_args=[]  # If no args are needed, pass an empty list
+load2hist = SparkSubmitOperator(
+    task_id='load2hist',
+    application=f'{spark_job_dir}/ndt_oscar/spark/stg_to_hist.py',
+    conn_id='spark-conn',
+    packages="org.postgresql:postgresql:42.3.1",
+    dag=dag
 )
 
 cleanup = BashOperator(
     task_id="cleanup",
-    bash_command=f"rm -rf {proj_dir}/data/staging/*"
+    bash_command=f"rm -rf {data_dir}/staging/* && rm -rf {data_dir}/raw/raw_financial.csv"
 )
 
-start >> print_proj >> sensor_dlk 
+start >> sensor_dlk 
 dlk_to_staging_fact >> load2hist >> cleanup >> end

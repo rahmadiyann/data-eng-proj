@@ -10,7 +10,10 @@ import sys
 def clean_df(df, data_dir):
     df = df.toDF(*[col_name.strip().lower().replace(' ', '_') for col_name in df.columns])
     df = df.withColumn('discount_band', when(col('discount_band') == 'NaN','No Discount').otherwise(col('discount_band')))
-    df.write.parquet(f"{data_dir}/staging/raw_data.parquet")
+    try:
+        df.write.parquet(f"{data_dir}/raw/raw_financial.parquet")
+    except Exception:
+        return df
     return df
 
 class df_load_dim:
@@ -48,7 +51,7 @@ class df_load_dim:
     def _load_postgre(self, df, table_name):
         df.write.jdbc(
             url=f"jdbc:postgresql://{self.postgres_config['host']}:{self.postgres_config['port']}/{self.postgres_config['database']}",
-            table=table_name,
+            table=f'{table_name}_dim',
             mode='overwrite',
             properties={
                 'user': self.postgres_config['user'],
@@ -106,16 +109,18 @@ class df_load_dim:
         return discount_table
         
 if __name__ == '__main__':
-    spark_home = '/opt/bitnami/spark'
+
+    os.environ["PYSPARK_PYTHON"] = "/usr/local/bin/python3"  # For executors
+    os.environ["PYSPARK_DRIVER_PYTHON"] = "/usr/local/bin/python3"  # For the driver
+
+    spark_home = '/opt/spark'
     findspark.init(spark_home)
-    data_dir = '/opt/airflow/data'
-    
-    os.environ['PYSPARK_PYTHON'] = sys.executable
-    os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
+    data_dir = '/opt/spark/data'
 
     spark = SparkSession.builder \
         .appName(f'dlk_to_staging_{sys.argv[1]}_dim') \
-        .config('spark.jars.packages', 'org.postgresql:postgresql:42.7.4') \
+        .config('spark.jars.packages', 'org.postgresql:postgresql:42.3.1') \
+        .config('spark.local.dir', '/tmp/spark-temp') \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel('ERROR')

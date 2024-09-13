@@ -1,23 +1,15 @@
-x-spark-common: &spark-common
-  image: bitnami/spark:latest
-  volumes:
-    - ./jobs:/opt/airflow/jobs
-    - ./data:/opt/airflow/data
-    - ./jars:/opt/airflow/jars
-  networks:
-    - code-with-yu
+version: '3.8'
 
 x-airflow-common: &airflow-common
   build:
     context: .
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.airflow
   env_file:
     - airflow.env
   volumes:
-    - ./jobs:/opt/airflow/jobs
-    - ./data:/opt/airflow/data
+    - ./data:/opt/spark/data
+    - ./spark_apps:/opt/spark/apps
     - ./dags:/opt/airflow/dags
-    - ./jars:/opt/airflow/jars
   environment:
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
     - AIRFLOW__CONN_SPARK_DEFAULT=spark://spark-master:7077
@@ -25,41 +17,14 @@ x-airflow-common: &airflow-common
     - AIRFLOW__CONN_POSTGRES_MOTORCYCLE_DB=postgresql://postgres:rahmadiyan@mmotorcycle.cp22uk6owxbs.us-west-2.rds.amazonaws.com:5432/postgres
   depends_on:
     - postgres
-  networks:
-    - code-with-yu
 
 services:
-  spark-master:
-    <<: *spark-common
-    command: bin/spark-class org.apache.spark.deploy.master.Master
-    ports:
-      - "9090:8080"
-      - "7077:7077"
-
-  spark-worker:
-    <<: *spark-common
-    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
-    depends_on:
-      - spark-master
-    environment:
-      SPARK_MODE: worker
-      SPARK_WORKER_CORES: 2
-      SPARK_WORKER_MEMORY: 1g
-      SPARK_MASTER_URL: spark://spark-master:7077
-      SPARK_PYSPARK_PYTHON: /opt/bitnami/python/bin/python3
-      SPARK_PYSPARK_DRIVER_PYTHON: /opt/bitnami/python/bin/python3
-    ports:
-      - "8081:8081"
-    user: "${UID}:${GID}"
-
   postgres:
     image: postgres:14.0
     environment:
       - POSTGRES_USER=airflow
       - POSTGRES_PASSWORD=airflow
       - POSTGRES_DB=airflow
-    networks:
-      - code-with-yu
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -76,10 +41,59 @@ services:
 
   scheduler:
     <<: *airflow-common
-    command: bash -c "airflow db migrate && airflow users create --username admin --firstname Yusuf --lastname Ganiyu --role Admin --email airscholar@gmail.com --password admin && airflow scheduler"
+    command: scheduler
 
-networks:
-  code-with-yu:
+  spark-master:
+    container_name: da-spark-master
+    build: Dockerfile.spark
+    image: da-spark-image
+    entrypoint: ['./entrypoint.sh', 'master']
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+    env_file:
+      - .env.spark
+    ports:
+      - '9090:8080'
+      - '7077:7077'
+
+
+  spark-history-server:
+    container_name: da-spark-history
+    image: da-spark-image
+    entrypoint: ['./entrypoint.sh', 'history']
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    volumes:
+      - spark-logs:/opt/spark/spark-events
+    ports:
+      - '18080:18080'
+
+  spark-worker:
+    container_name: da-spark-worker
+    image: da-spark-image
+    entrypoint: ['./entrypoint.sh', 'worker']
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    volumes:
+      - ./data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+    ports:
+      - "8081:8081"
+    environment:
+      - PYSPARK_PYTHON=/usr/local/bin/python
 
 volumes:
+  spark-logs:
   postgres_data:

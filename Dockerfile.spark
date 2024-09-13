@@ -1,20 +1,21 @@
-FROM python:3.10-bullseye as spark-base
+FROM python:3.12-bullseye as spark-base
+
+ENV PYSPARK_PYTHON=/usr/local/bin/python3
+ENV PATH="/usr/local/bin/python3:${PATH}"
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      sudo \
-      curl \
-      vim \
-      unzip \
-      rsync \
-      openjdk-11-jdk \
-      build-essential \
-      software-properties-common \
-      ssh && \
+    sudo \
+    curl \
+    vim \
+    unzip \
+    rsync \
+    openjdk-17-jdk \
+    build-essential \
+    software-properties-common \
+    ssh && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-
 
 ## Download spark and hadoop dependencies and install
 
@@ -27,8 +28,8 @@ WORKDIR ${SPARK_HOME}
 
 
 RUN curl https://dlcdn.apache.org/spark/spark-3.5.2/spark-3.5.2-bin-hadoop3.tgz -o spark-3.5.2-bin-hadoop3.tgz \
- && tar xvzf spark-3.5.2-bin-hadoop3.tgz --directory /opt/spark --strip-components 1 \
- && rm -rf spark-3.5.2-bin-hadoop3.tgz
+    && tar xvzf spark-3.5.2-bin-hadoop3.tgz --directory /opt/spark --strip-components 1 \
+    && rm -rf spark-3.5.2-bin-hadoop3.tgz
 
 
 FROM spark-base as pyspark

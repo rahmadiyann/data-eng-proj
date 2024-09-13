@@ -7,8 +7,14 @@ RUN apt-get update && \
 
 # Set JAVA_HOME environment variable
 ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
+COPY entrypoint-airflow.sh .
+RUN chmod +x entrypoint-airflow.sh
 
+# RUN chown -R airflow:root /opt/spark/
 USER airflow
 
-COPY requirements.txt /tmp/requirements.txt
+COPY requirements_airflow.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt
+
+USER root
+ENTRYPOINT ["./entrypoint-airflow.sh"]
