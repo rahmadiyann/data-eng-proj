@@ -1,0 +1,5 @@
+venv/
+.lprof
+__pycache__/
+.env
+.cache
