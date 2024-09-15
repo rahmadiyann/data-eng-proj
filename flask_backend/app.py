@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import secrets
 import time
 
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 client_id = os.getenv('ETL_CLIENT_ID')
 client_secret = os.getenv('ETL_CLIENT_SECRET')
@@ -65,41 +65,13 @@ def homepage():
     for item in recent_played['items']:
         played_at = item['played_at'],
         song_id = item['track']['id']
-        song_name = item['track']['name']
-        song_duration_ms = item['track']['duration_ms']
-        popularity = item['track']['popularity']
-        song_link = item['track']['external_urls']['spotify']
-        song_uri = item['track']['uri']
-        explicit = item['track']['explicit']
         album_id = item['track']['album']['id']
-        album_name = item['track']['album']['name']
-        album_link = item['track']['album']['external_urls']['spotify']
-        album_uri = item['track']['album']['uri']
-        album_release_date = item['track']['album']['release_date']
-        album_total_tracks = item['track']['album']['total_tracks']
         artist_id = item['track']['artists'][0]['id']
-        artist_name = item['track']['artists'][0]['name']
-        artist_link = item['track']['artists'][0]['external_urls']['spotify']
-        artist_uri = item['track']['artists'][0]['uri']
         items.append({
             'played_at': played_at[0],
             'song_id': song_id,
-            'song_name': song_name,
-            'song_duration_ms': song_duration_ms,
-            'popularity': popularity,
-            'song_link': song_link,
-            'song_uri': song_uri,
-            'explicit': explicit,
             'album_id': album_id,
-            'album_name': album_name,
-            'album_link': album_link,
-            'album_uri': album_uri,
-            'album_release_date': album_release_date,
-            'album_total_tracks': album_total_tracks,
             'artist_id': artist_id,
-            'artist_name': artist_name,
-            'artist_link': artist_link,
-            'artist_uri': artist_uri
         })
         
     data = {
@@ -123,3 +95,6 @@ def redirect_page():
     save_token_info(token_info)
     session[TOKEN_INFO] = token_info
     return redirect(url_for('homepage', _external=True),)
+
+print(os.environ.get('ETL_CLIENT_ID'))
+print(os.environ.get('ETL_CLIENT_SECRET'))
