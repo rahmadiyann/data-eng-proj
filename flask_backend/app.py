@@ -1,3 +1,4 @@
+import uuid
 import json
 from flask import Flask, redirect, session, request, url_for
 from spotipy import Spotify, SpotifyOAuth
@@ -49,7 +50,7 @@ def load_token_info():
     except KeyError:
         return None
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['POST'])
 def homepage():
     try:
         token_info = get_token()
@@ -59,8 +60,15 @@ def homepage():
     sp = Spotify(auth=token_info)
     
     # Get 'after' from the POST request, if not provided, set default to 7 days ago
+    req_data = request.get_json()
+    recent_played = sp.current_user_recently_played(after=req_data['after'])
+    if recent_played['items'] == []:
+        return {
+            "status_code": 204,
+            "message": "No new data"
+        }
+        
     # after = request.form.get('after')
-    recent_played = sp.current_user_recently_played(limit=2)
     items = []
     for item in recent_played['items']:
         played_at = item['played_at'],
@@ -68,18 +76,18 @@ def homepage():
         album_id = item['track']['album']['id']
         artist_id = item['track']['artists'][0]['id']
         items.append({
+            'id': uuid.uuid4().hex,
             'played_at': played_at[0],
             'song_id': song_id,
             'album_id': album_id,
             'artist_id': artist_id,
         })
         
-    data = {
-        # we're fething recent_played['cursors']['before'] as the parameter for the next api call so we're not getting the same data
-        'after': recent_played['cursors']['before'],
-        'items': items
+    return {
+        'status_code': 200,
+        'message': f'{len(items)} new songs',
+        'items': items,
     }
-    return data
     
     
 @app.route('/login', methods=['GET'])
@@ -95,6 +103,3 @@ def redirect_page():
     save_token_info(token_info)
     session[TOKEN_INFO] = token_info
     return redirect(url_for('homepage', _external=True),)
-
-print(os.environ.get('ETL_CLIENT_ID'))
-print(os.environ.get('ETL_CLIENT_SECRET'))

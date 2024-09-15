@@ -5,7 +5,7 @@ Base = declarative_base()
 
 class DimArtist(Base):
     __tablename__ = 'dim_artist'
-    id = Column(String, primary_key=True)
+    artist_id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     external_url = Column(String, nullable=False)
     follower_count = Column(Integer, nullable=False)
@@ -14,7 +14,7 @@ class DimArtist(Base):
 
 class DimAlbum(Base):
     __tablename__ = 'dim_album'
-    id = Column(String, primary_key=True)
+    album_id = Column(String, primary_key=True)
     title = Column(String, nullable=False)
     total_tracks = Column(Integer, nullable=False)
     release_date=Column(DateTime, nullable=False)
@@ -25,7 +25,7 @@ class DimAlbum(Base):
 
 class DimSong(Base):
     __tablename__ = 'dim_song'
-    id = Column(String, primary_key=True)
+    song_id = Column(String, primary_key=True)
     title = Column(String, nullable=False)
     disc_number = Column(Integer, nullable=False)
     duration_ms = Column(BigInteger, nullable=False)
@@ -36,9 +36,9 @@ class DimSong(Base):
 
 class FactHistory(Base):
     __tablename__ = 'fact_history'
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    listening_id = Column(Integer, primary_key=True)
     listened_at = Column(DateTime, nullable=False)
-    song_id = Column(String, ForeignKey('dim_song.id'), nullable=False)
-    album_id = Column(String, ForeignKey('dim_album.id'), nullable=False)
-    artist_id = Column(String, ForeignKey('dim_artist.id'), nullable=False)
+    song_id = Column(String, ForeignKey('dim_song.song_id'), nullable=False)
+    album_id = Column(String, ForeignKey('dim_album.album_id'), nullable=False)
+    artist_id = Column(String, ForeignKey('dim_artist.artist_id'), nullable=False)
     
