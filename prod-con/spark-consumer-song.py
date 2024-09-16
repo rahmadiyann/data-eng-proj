@@ -87,7 +87,7 @@ def main():
         print("Spark session stopped.")
 
 if __name__ == "__main__":
-    spark_home = "your spark home directory"
+    spark_home = "/Users/rian/Desktop/spark-3.5.2-bin-hadoop3"
     jdbc_jar = f"{spark_home}/jars/PostgreSQL-42.7.0.jar"
     findspark.init(spark_home)
     load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
