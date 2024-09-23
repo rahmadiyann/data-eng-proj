@@ -1,0 +1,5 @@
+psycopg2-binary
+pyspark
+findspark
+confluent-kafka
+python-dotenv

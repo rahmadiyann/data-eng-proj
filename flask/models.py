@@ -42,3 +42,9 @@ class FactHistory(Base):
     album_id = Column(String, ForeignKey('dim_album.album_id'), nullable=False)
     artist_id = Column(String, ForeignKey('dim_artist.artist_id'), nullable=False)
     
+class Tokens(Base):
+    __tablename__ = 'tokens'
+    id = Column(Integer, primary_key=True)
+    access_token = Column(String(512), nullable=True)
+    refresh_token = Column(String(512), nullable=True)
+    expires_at = Column(Integer, nullable=True)

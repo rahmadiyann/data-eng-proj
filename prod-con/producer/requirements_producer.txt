@@ -1,0 +1,7 @@
+psycopg2-binary
+sqlalchemy
+sqlalchemy.orm
+spotipy
+requests
+confluent-kafka
+python-dotenv

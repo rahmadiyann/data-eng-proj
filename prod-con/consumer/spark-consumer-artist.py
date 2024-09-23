@@ -1,26 +1,24 @@
-# spark-consumer-song.py
+# spark-consumer-artist.py
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, when, to_date
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, BooleanType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from dotenv import load_dotenv
 import os
 import findspark
 
 def get_schemas():
-    song_schema = StructType([
-        StructField("song_id", StringType(), True),
-        StructField("title", StringType(), True),
-        StructField("disc_number", IntegerType(), True),
-        StructField("duration_ms", IntegerType(), True),
-        StructField("explicit", BooleanType(), True),
+    artist_schema = StructType([
+        StructField("artist_id", StringType(), True),
+        StructField("name", StringType(), True),
         StructField("external_url", StringType(), True),
-        StructField("preview_url", StringType(), True),
+        StructField("follower_count", IntegerType(), True),
+        StructField("image_url", StringType(), True),
         StructField("popularity", IntegerType(), True)
     ])
 
     return {
-        "song_topic": song_schema
+        "artist_topic": artist_schema
     }
 
 def write_to_postgres(batch_df, batch_id):
@@ -29,7 +27,7 @@ def write_to_postgres(batch_df, batch_id):
         "password": os.getenv('PSQL_PASSWORD'),
         "driver": "org.postgresql.Driver",
         'url': os.getenv('PSQL_LINK'),
-        "dbtable": "dim_song",
+        "dbtable": "dim_artist",
     }
     
     if not batch_df.isEmpty():
@@ -37,7 +35,7 @@ def write_to_postgres(batch_df, batch_id):
 
 def create_spark_session():
     return SparkSession.builder \
-        .appName("song-topic-spark-consumer") \
+        .appName("artist-topic-spark-consumer") \
         .config("spark.jars", jdbc_jar) \
         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.2") \
         .getOrCreate()
@@ -50,17 +48,16 @@ def read_from_kafka(spark, kafka_bootstrap_servers, topics):
         .load()
 
 def parse_json_data(df, schemas):
-    song_df = df.filter(col("topic") == "song_topic") \
-                 .withColumn("parsed_data", from_json(col("json_value"), schemas["song_topic"])) \
+    artist_df = df.filter(col("topic") == "artist_topic") \
+                 .withColumn("parsed_data", from_json(col("json_value"), schemas["artist_topic"])) \
                  .select(col("parsed_data.*"))
 
-    return song_df
+    return artist_df
 
 def main():
     schemas = get_schemas()
     spark = create_spark_session()
-    kafka_bootstrap_servers = "localhost:9092"
-    topics = "song_topic"  # Only consume song_topic
+    topics = "artist_topic"  # Only consume artist_topic
 
     df = read_from_kafka(spark, kafka_bootstrap_servers, topics)
     df = df.selectExpr("CAST(value AS STRING) as json_value", "topic")
@@ -87,8 +84,9 @@ def main():
         print("Spark session stopped.")
 
 if __name__ == "__main__":
-    spark_home = "/Users/rian/Desktop/spark-3.5.2-bin-hadoop3"
+    load_dotenv()
+    kafka_bootstrap_servers = os.getenv('KAFKA_BOOTSTRAP_SERVER')
+    spark_home = os.getenv('SPARK_HOME')
     jdbc_jar = f"{spark_home}/jars/PostgreSQL-42.7.0.jar"
     findspark.init(spark_home)
-    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
     main()
